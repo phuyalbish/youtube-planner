@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YouTube Upload Planner
 
-## Getting Started
+A Next.js dashboard to plan and track daily YouTube uploads across multiple channels.
 
-First, run the development server:
+## Features
+
+- **Multiple channels** — one sidebar entry per channel, with pending/total counts
+- **JSON import** — drop in a 30-day plan per channel (paste or upload a file)
+- **One-click copy** — separate copy buttons for title, description, suno-prompt, thumbnail-text
+- **Pending / Uploaded / All** filters; the next pending day is highlighted at the top
+- **Mark uploaded** — hides the task from Pending; the next day automatically rises to the top
+- **Export** — download a channel back to JSON
+- Server-side persistence (JSON file on disk)
+
+## Getting started
 
 ```bash
+npm install   # already done if scaffolded
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Channels and tasks are stored in `data/db.json` (gitignored).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## JSON import format
 
-## Learn More
+A bare array, or `{ "tasks": [...] }`, or `{ "days": [...] }`:
 
-To learn more about Next.js, take a look at the following resources:
+```json
+[
+  {
+    "day": 1,
+    "title": "Morning Raga",
+    "description": "A serene morning melody.",
+    "suno-prompt": "soft sitar morning raga, slow tempo",
+    "thumbnail-text": "DAY 1 · MORNING RAGA"
+  },
+  {
+    "day": 2,
+    "title": "Twilight Drone",
+    "description": "...",
+    "suno-prompt": "...",
+    "thumbnail-text": "TWILIGHT"
+  }
+]
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`thumbnail-text` is the bold caption you place on the YouTube thumbnail. Aliases accepted: `thumbnailText`, `thumbnail`. Omit to leave blank.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Build & run
 
-## Deploy on Vercel
+```bash
+npm run build
+npm start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project layout
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  app/
+    layout.tsx           # root layout + ToastProvider
+    page.tsx             # renders <Dashboard/>
+    globals.css          # Tailwind v4 + design tokens
+    api/
+      channels/          # GET, POST channels
+      channels/[id]/     # PATCH, DELETE
+      channels/[id]/tasks   # GET, POST
+      channels/[id]/import  # POST (JSON import)
+      channels/[id]/export  # GET (download JSON)
+      tasks/[id]            # GET, PATCH, DELETE
+  components/
+    Dashboard.tsx        # main client component
+    Sidebar.tsx
+    TaskCard.tsx
+    TaskEditor.tsx
+    ImportModal.tsx
+    Modal.tsx
+    Toast.tsx
+    CopyButton.tsx
+  lib/
+    db.ts                # JSON-file persistence with serialized writes
+    types.ts             # shared types
+```

@@ -1,18 +1,24 @@
 @import "tailwindcss";
 
+/* ---------- Light (dim) ----------
+   Soft warm-grey palette. Background and surfaces sit very close together
+   so cards barely separate from the canvas — calmer than a stark white UI.
+   Accent is a desaturated dusty blue, never a screaming primary. */
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
-  --panel: #ffffff;
-  --border: #e6e6ea;
-  --border-strong: #d4d4d8;
-  --muted: #6b7280;
-  --muted-2: #a1a1aa;
-  --accent: #2563eb;
-  --accent-soft: #eff4ff;
-  --success: #16a34a;
-  --success-soft: #ecfdf5;
-  --danger: #dc2626;
+  --background: #f3f3f1;
+  --foreground: #2c2c31;
+  --panel: #fafaf8;
+  --border: #e3e2de;
+  --border-strong: #cfceca;
+  --muted: #5f5f66;
+  --muted-2: #87878d;
+  --accent: #5e7595;        /* dusty steel-blue, dark enough for white text */
+  --accent-fg: #ffffff;
+  --accent-soft: #dde3ed;
+  --success: #56806b;
+  --success-fg: #ffffff;
+  --success-soft: #dee7e1;
+  --danger: #a35a5a;
 }
 
 @theme inline {
@@ -51,3 +57,160 @@ body {
   background: var(--accent-soft);
   color: var(--accent);
 }
+
+/* Light-mode tonal overrides — pull Tailwind's stock zinc/blue/etc. closer
+   to the dim palette so nothing stands out unnecessarily. */
+.bg-white { background-color: var(--panel) !important; }
+.bg-zinc-50 { background-color: #efefec !important; }
+.bg-zinc-100 { background-color: #e8e8e4 !important; }
+.bg-zinc-200 { background-color: #dededa !important; }
+.hover\:bg-zinc-50:hover { background-color: #ebebe7 !important; }
+.hover\:bg-zinc-100:hover { background-color: #e1e1dd !important; }
+.hover\:bg-white:hover { background-color: var(--panel) !important; }
+
+.text-zinc-900 { color: #232328 !important; }
+.text-zinc-800 { color: #36363c !important; }
+.text-zinc-700 { color: #46464d !important; }
+.text-zinc-600 { color: #565660 !important; }
+.text-zinc-500 { color: var(--muted) !important; }
+.text-zinc-400 { color: var(--muted-2) !important; }
+.hover\:text-zinc-900:hover { color: #232328 !important; }
+.hover\:text-zinc-600:hover { color: #46464d !important; }
+
+.border-zinc-200 { border-color: var(--border) !important; }
+.border-zinc-300 { border-color: var(--border-strong) !important; }
+
+.bg-blue-50 { background-color: var(--accent-soft) !important; }
+.bg-blue-100 { background-color: #d6dfeb !important; }
+.border-blue-200 { border-color: #c5cfde !important; }
+.border-blue-300 { border-color: #b9c3d4 !important; }   /* dimmer "next day" border */
+.text-blue-700 { color: #41587a !important; }
+.text-blue-600 { color: #4d6582 !important; }
+.text-blue-500 { color: var(--accent) !important; }
+.bg-blue-500 { background-color: var(--accent) !important; }
+.hover\:bg-blue-700:hover { background-color: #4d6582 !important; }
+.hover\:bg-blue-100:hover { background-color: #ced8e6 !important; }
+.ring-blue-100 { --tw-ring-color: #e1e6ee !important; }
+
+.bg-emerald-50 { background-color: var(--success-soft) !important; }
+.bg-emerald-600 { background-color: var(--success) !important; }
+.text-emerald-700 { color: #3f6e54 !important; }
+.text-emerald-600 { color: #4a7a60 !important; }
+.border-emerald-300 { border-color: #a8bdaf !important; }
+.hover\:bg-emerald-700:hover { background-color: #496e5b !important; }
+
+.bg-red-50 { background-color: #f1e3e3 !important; }
+.border-red-200 { border-color: #d8b9b9 !important; }
+.border-red-300 { border-color: #c9a3a3 !important; }
+.text-red-700 { color: #9a5252 !important; }
+.text-red-600 { color: var(--danger) !important; }
+.hover\:bg-red-50:hover { background-color: #ecdada !important; }
+.hover\:bg-red-100:hover { background-color: #e6cccc !important; }
+.hover\:text-red-600:hover { color: var(--danger) !important; }
+
+.bg-amber-50 { background-color: #efe8d8 !important; }
+.bg-amber-100 { background-color: #e7decb !important; }
+.border-amber-200 { border-color: #d6c9a9 !important; }
+.border-amber-300 { border-color: #c8b990 !important; }
+.text-amber-700 { color: #876e3e !important; }
+.hover\:bg-amber-100:hover { background-color: #e0d6bf !important; }
+
+input, textarea, select {
+  background-color: var(--panel);
+  color: var(--foreground);
+}
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-2);
+}
+
+/* ---------- Dark (dim) ----------
+   Warm near-black canvas, panels barely a few percent lighter — eyes-friendly
+   evening palette. Accents stay soft, never neon. */
+html.dark {
+  --background: #15171a;
+  --foreground: #dcdce0;
+  --panel: #1c1e22;
+  --border: #2c2e33;
+  --border-strong: #3d3f45;
+  --muted: #9c9ca2;
+  --muted-2: #7a7a80;
+  --accent: #6b86b0;        /* slightly deeper so white text stays legible */
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(107, 134, 176, 0.16);
+  --success: #5a8b70;
+  --success-fg: #ffffff;
+  --success-soft: rgba(90, 139, 112, 0.16);
+  --danger: #c47878;
+  color-scheme: dark;
+}
+
+html.dark .bg-white       { background-color: var(--panel) !important; }
+html.dark .bg-zinc-50     { background-color: #1f2024 !important; }
+html.dark .bg-zinc-100    { background-color: #24252a !important; }
+html.dark .bg-zinc-200    { background-color: #2e2f34 !important; }
+html.dark .hover\:bg-zinc-50:hover  { background-color: #23242a !important; }
+html.dark .hover\:bg-zinc-100:hover { background-color: #2a2b31 !important; }
+html.dark .hover\:bg-white:hover    { background-color: #23242a !important; }
+
+html.dark .text-zinc-900 { color: #ebebee !important; }
+html.dark .text-zinc-800 { color: #d8d8db !important; }
+html.dark .text-zinc-700 { color: #c4c4c9 !important; }
+html.dark .text-zinc-600 { color: #b0b0b6 !important; }
+html.dark .text-zinc-500 { color: var(--muted) !important; }
+html.dark .text-zinc-400 { color: var(--muted-2) !important; }
+html.dark .hover\:text-zinc-900:hover { color: #ebebee !important; }
+html.dark .hover\:text-zinc-600:hover { color: #c4c4c9 !important; }
+
+html.dark .border-zinc-200 { border-color: var(--border) !important; }
+html.dark .border-zinc-300 { border-color: var(--border-strong) !important; }
+
+html.dark .bg-blue-50  { background-color: rgba(107, 134, 176, 0.10) !important; }
+html.dark .bg-blue-100 { background-color: rgba(107, 134, 176, 0.16) !important; }
+html.dark .bg-blue-500 { background-color: var(--accent) !important; }
+html.dark .border-blue-200 { border-color: rgba(107, 134, 176, 0.24) !important; }
+html.dark .border-blue-300 { border-color: rgba(107, 134, 176, 0.30) !important; }   /* dimmer "next" border */
+html.dark .text-blue-700 { color: #b8cae0 !important; }
+html.dark .text-blue-600 { color: #b8cae0 !important; }
+html.dark .text-blue-500 { color: var(--accent) !important; }
+html.dark .hover\:bg-blue-700:hover { background-color: #5e7aa1 !important; }
+html.dark .hover\:bg-blue-100:hover { background-color: rgba(107, 134, 176, 0.20) !important; }
+html.dark .ring-blue-100 { --tw-ring-color: rgba(107, 134, 176, 0.18) !important; }
+
+html.dark .bg-emerald-50  { background-color: rgba(90, 139, 112, 0.10) !important; }
+html.dark .bg-emerald-600 { background-color: var(--success) !important; }
+html.dark .text-emerald-700 { color: #b1cdba !important; }
+html.dark .text-emerald-600 { color: #b1cdba !important; }
+html.dark .border-emerald-300 { border-color: rgba(90, 139, 112, 0.30) !important; }
+html.dark .hover\:bg-emerald-700:hover { background-color: #4d7660 !important; }
+
+html.dark .bg-red-50 { background-color: rgba(201, 134, 134, 0.08) !important; }
+html.dark .border-red-200 { border-color: rgba(201, 134, 134, 0.28) !important; }
+html.dark .border-red-300 { border-color: rgba(201, 134, 134, 0.40) !important; }
+html.dark .text-red-700 { color: #d4a3a3 !important; }
+html.dark .text-red-600 { color: #d4a3a3 !important; }
+html.dark .hover\:bg-red-50:hover { background-color: rgba(201, 134, 134, 0.14) !important; }
+html.dark .hover\:bg-red-100:hover { background-color: rgba(201, 134, 134, 0.18) !important; }
+html.dark .hover\:text-red-600:hover { color: #d4a3a3 !important; }
+
+html.dark .bg-amber-50  { background-color: rgba(196, 167, 110, 0.08) !important; }
+html.dark .bg-amber-100 { background-color: rgba(196, 167, 110, 0.14) !important; }
+html.dark .border-amber-200 { border-color: rgba(196, 167, 110, 0.28) !important; }
+html.dark .border-amber-300 { border-color: rgba(196, 167, 110, 0.40) !important; }
+html.dark .text-amber-700 { color: #cbb47e !important; }
+html.dark .hover\:bg-amber-100:hover { background-color: rgba(196, 167, 110, 0.18) !important; }
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background-color: #1f2024;
+  color: var(--foreground);
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--muted-2);
+}
+
+/* Soften modal scrim — never fully black */
+.bg-black\/40 { background-color: rgba(40, 40, 44, 0.45) !important; }
+html.dark .bg-black\/40 { background-color: rgba(0, 0, 0, 0.55) !important; }

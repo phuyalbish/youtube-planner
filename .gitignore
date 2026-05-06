@@ -39,6 +39,15 @@ yarn-error.log*
 # local data store
 /data
 
+# generated audio
+/public/audio
+
+# bulk-downloaded suno library
+/suno-library
+
+# per-task exports: {ChannelName}-{day}/
+/*-[0-9]*/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -18,6 +18,7 @@ export async function PATCH(req, ctx) {
     sunoPrompt: body.sunoPrompt,
     thumbnailText: body.thumbnailText,
     uploaded: body.uploaded,
+    downloaded: body.downloaded,
   });
   if (!t) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ task: toTaskDTO(t) });

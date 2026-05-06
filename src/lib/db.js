@@ -1,15 +1,28 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { defaultSettings } from "./types.js";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
+const AUDIO_DIR = path.join(process.cwd(), "public", "audio");
 
 let writeChain = Promise.resolve();
 let cache = null;
 
 async function ensureDirs() {
   await fs.mkdir(DATA_DIR, { recursive: true });
+}
+
+function mergeSettings(loaded) {
+  const def = defaultSettings();
+  const out = { ...def };
+  if (loaded && typeof loaded === "object") {
+    for (const k of Object.keys(def)) {
+      out[k] = { ...def[k], ...(loaded[k] ?? {}) };
+    }
+  }
+  return out;
 }
 
 async function readDb() {
@@ -23,15 +36,27 @@ async function readDb() {
         ? parsed.channels.map((c) => ({
             description: "",
             presets: [],
+            sunoStyle: "",
+            sunoExcludeStyle: "",
+            sunoWeirdness: 30,
+            sunoStyleInfluence: 70,
             ...c,
             presets: Array.isArray(c.presets) ? c.presets : [],
+            sunoStyle: typeof c.sunoStyle === "string" ? c.sunoStyle : "",
+            sunoExcludeStyle:
+              typeof c.sunoExcludeStyle === "string" ? c.sunoExcludeStyle : "",
+            sunoWeirdness:
+              typeof c.sunoWeirdness === "number" ? c.sunoWeirdness : 30,
+            sunoStyleInfluence:
+              typeof c.sunoStyleInfluence === "number" ? c.sunoStyleInfluence : 70,
           }))
         : [],
       tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+      settings: mergeSettings(parsed.settings),
     };
   } catch (e) {
     if (e.code === "ENOENT") {
-      cache = { channels: [], tasks: [] };
+      cache = { channels: [], tasks: [], settings: defaultSettings() };
     } else {
       throw e;
     }
@@ -53,6 +78,7 @@ async function mutate(fn) {
     const draft = {
       channels: db.channels.map((c) => ({ ...c })),
       tasks: db.tasks.map((t) => ({ ...t })),
+      settings: JSON.parse(JSON.stringify(db.settings ?? defaultSettings())),
     };
     const result = await fn(draft);
     await writeDb(draft);
@@ -81,6 +107,10 @@ export async function createChannel(name, description = "") {
       name: name.trim() || "Untitled Channel",
       description: typeof description === "string" ? description : "",
       presets: [],
+      sunoStyle: "",
+      sunoExcludeStyle: "",
+      sunoWeirdness: 30,
+      sunoStyleInfluence: 70,
       createdAt: Date.now(),
     };
     db.channels.push(channel);
@@ -94,6 +124,17 @@ export async function updateChannel(id, patch) {
     if (!c) return null;
     if (typeof patch.name === "string") c.name = patch.name.trim() || c.name;
     if (typeof patch.description === "string") c.description = patch.description;
+    if (typeof patch.sunoStyle === "string") c.sunoStyle = patch.sunoStyle;
+    if (typeof patch.sunoExcludeStyle === "string")
+      c.sunoExcludeStyle = patch.sunoExcludeStyle;
+    if (patch.sunoWeirdness !== undefined) {
+      const n = Number(patch.sunoWeirdness);
+      if (Number.isFinite(n)) c.sunoWeirdness = Math.max(0, Math.min(100, Math.round(n)));
+    }
+    if (patch.sunoStyleInfluence !== undefined) {
+      const n = Number(patch.sunoStyleInfluence);
+      if (Number.isFinite(n)) c.sunoStyleInfluence = Math.max(0, Math.min(100, Math.round(n)));
+    }
     if (Array.isArray(patch.presets)) {
       c.presets = patch.presets
         .filter((p) => p && typeof p === "object")
@@ -107,13 +148,33 @@ export async function updateChannel(id, patch) {
   });
 }
 
+async function rmChannelAudio(channelId) {
+  try {
+    await fs.rm(path.join(AUDIO_DIR, channelId), { recursive: true, force: true });
+  } catch {}
+}
+
+async function rmTaskAudio(channelId, taskId) {
+  try {
+    const dir = path.join(AUDIO_DIR, channelId);
+    const entries = await fs.readdir(dir).catch(() => []);
+    await Promise.all(
+      entries
+        .filter((f) => f.startsWith(taskId + "-") || f.startsWith(taskId + "."))
+        .map((f) => fs.rm(path.join(dir, f), { force: true })),
+    );
+  } catch {}
+}
+
 export async function deleteChannel(id) {
-  return mutate(async (db) => {
+  const result = await mutate(async (db) => {
     const removedTasks = db.tasks.filter((t) => t.channelId === id);
     db.channels = db.channels.filter((c) => c.id !== id);
     db.tasks = db.tasks.filter((t) => t.channelId !== id);
     return { removedTasks };
   });
+  await rmChannelAudio(id);
+  return result;
 }
 
 export async function listTasks(channelId) {
@@ -154,7 +215,6 @@ export async function bulkCreateTasks(channelId, rows, opts = {}) {
     if (!channel) throw new Error("Channel not found");
     if (opts.replace) db.tasks = db.tasks.filter((t) => t.channelId !== channelId);
 
-    // Pick the next free day for this channel, skipping ones already in use.
     const used = new Set(
       db.tasks.filter((t) => t.channelId === channelId).map((t) => t.day),
     );
@@ -201,15 +261,69 @@ export async function updateTask(id, patch) {
       t.uploaded = patch.uploaded;
       t.uploadedAt = patch.uploaded ? Date.now() : null;
     }
+    if (patch.downloaded !== undefined) {
+      t.downloaded = !!patch.downloaded;
+      t.downloadedAt = patch.downloaded ? Date.now() : null;
+      // Moving back to Suno also clears the uploaded flag.
+      if (!patch.downloaded) {
+        t.uploaded = false;
+        t.uploadedAt = null;
+      }
+    }
+    if (patch.sunoGeneration !== undefined) {
+      t.sunoGeneration = patch.sunoGeneration;
+    }
+    return t;
+  });
+}
+
+export async function mutateSunoGeneration(id, fn) {
+  return mutate(async (db) => {
+    const t = db.tasks.find((x) => x.id === id);
+    if (!t) return null;
+    t.sunoGeneration = fn(t.sunoGeneration ?? null);
+    return t;
+  });
+}
+
+export async function patchSunoGeneration(id, patch) {
+  return mutate(async (db) => {
+    const t = db.tasks.find((x) => x.id === id);
+    if (!t) return null;
+    const cur = t.sunoGeneration ?? {};
+    t.sunoGeneration = { ...cur, ...patch };
+    return t;
+  });
+}
+
+export async function clearSunoGeneration(id) {
+  return mutate(async (db) => {
+    const t = db.tasks.find((x) => x.id === id);
+    if (!t) return null;
+    t.sunoGeneration = null;
     return t;
   });
 }
 
 export async function deleteTask(id) {
-  return mutate(async (db) => {
+  const removed = await mutate(async (db) => {
     const t = db.tasks.find((x) => x.id === id);
     if (!t) return null;
     db.tasks = db.tasks.filter((x) => x.id !== id);
     return t;
+  });
+  if (removed) await rmTaskAudio(removed.channelId, removed.id);
+  return removed;
+}
+
+export async function getSettings() {
+  const db = await readDb();
+  return db.settings ?? defaultSettings();
+}
+
+export async function updateSettings(patch) {
+  return mutate(async (db) => {
+    db.settings = mergeSettings({ ...db.settings, ...patch });
+    return db.settings;
   });
 }

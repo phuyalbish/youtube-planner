@@ -2,8 +2,19 @@
 
 import { useState } from "react";
 import { useToast } from "./Toast";
+import { SunoGenerationPanel } from "./SunoGenerationPanel";
 
-export function TaskCard({ task, isNext, onMarkUploaded, onEdit, onDelete }) {
+export function TaskCard({
+  task,
+  channel,
+  isNext,
+  view = "suno",
+  onMarkUploaded,
+  onMarkDownloaded,
+  onEdit,
+  onDelete,
+  onTaskUpdated,
+}) {
   const cardClasses = [
     "flex flex-col gap-2.5 p-4 rounded-xl bg-white border shadow-sm",
     isNext ? "border-blue-300 ring-2 ring-blue-100" : "border-[var(--border)]",
@@ -18,12 +29,15 @@ export function TaskCard({ task, isNext, onMarkUploaded, onEdit, onDelete }) {
             "text-[11px] font-semibold px-2 py-0.5 rounded-full tracking-wide",
             task.uploaded
               ? "bg-emerald-50 text-emerald-700"
-              : "bg-[var(--accent-soft)] text-[var(--accent)]",
+              : task.downloaded
+                ? "bg-amber-50 text-amber-700"
+                : "bg-[var(--accent-soft)] text-[var(--accent)]",
           ].join(" ")}
         >
           DAY {task.day}
           {isNext && !task.uploaded && " · NEXT"}
-          {task.uploaded && " · DONE"}
+          {task.uploaded && " · UPLOADED"}
+          {!task.uploaded && task.downloaded && " · DOWNLOADED"}
         </span>
         <div className="ml-auto flex gap-1">
           <button
@@ -47,10 +61,24 @@ export function TaskCard({ task, isNext, onMarkUploaded, onEdit, onDelete }) {
 
       <FieldBlock label="Title" value={task.title} kind="title" />
       <FieldBlock label="Suno Prompt" value={task.sunoPrompt} kind="suno" collapsible />
+      {view === "suno" && (
+        <SunoGenerationPanel task={task} channel={channel} onTaskUpdated={onTaskUpdated} />
+      )}
       <FieldBlock label="Thumbnail Text" value={task.thumbnailText} kind="thumbnail" />
 
       <div className="flex items-center gap-2 mt-1 flex-wrap">
-        {task.uploaded ? (
+        {view === "suno" ? (
+          <>
+            <span className="mr-auto" />
+            <button
+              type="button"
+              onClick={() => onMarkDownloaded?.(task.id, true)}
+              className="text-sm px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              ✓ Downloaded
+            </button>
+          </>
+        ) : task.uploaded ? (
           <>
             <span className="text-xs text-emerald-600 mr-auto">
               ✓ Uploaded {task.uploadedAt ? new Date(task.uploadedAt).toLocaleDateString() : ""}
@@ -60,12 +88,19 @@ export function TaskCard({ task, isNext, onMarkUploaded, onEdit, onDelete }) {
               onClick={() => onMarkUploaded(task.id, false)}
               className="text-sm px-3 py-1.5 rounded-md border border-[var(--border-strong)] hover:bg-zinc-50"
             >
-              Move back to pending
+              Move back to YouTube
             </button>
           </>
         ) : (
           <>
-            <span className="mr-auto" />
+            <button
+              type="button"
+              onClick={() => onMarkDownloaded?.(task.id, false)}
+              className="mr-auto text-xs text-zinc-500 hover:text-zinc-900 underline"
+              title="Not downloaded — move back to Suno"
+            >
+              ↩ Not downloaded — back to Suno
+            </button>
             <button
               type="button"
               onClick={() => onMarkUploaded(task.id, true)}

@@ -15,6 +15,10 @@ export async function PATCH(req, ctx) {
     name: body.name,
     description: body.description,
     presets: body.presets,
+    sunoStyle: body.sunoStyle,
+    sunoExcludeStyle: body.sunoExcludeStyle,
+    sunoWeirdness: body.sunoWeirdness,
+    sunoStyleInfluence: body.sunoStyleInfluence,
   });
   if (!channel) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ channel });

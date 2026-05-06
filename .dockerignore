@@ -1,0 +1,14 @@
+node_modules
+.next
+dist
+.git
+.gitignore
+.env*
+npm-debug.log*
+.DS_Store
+README.md
+AGENTS.md
+CLAUDE.md
+suno.py
+data/db.json
+public/audio

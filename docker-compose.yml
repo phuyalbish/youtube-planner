@@ -1,0 +1,15 @@
+services:
+  planner:
+    build: .
+    image: planner:latest
+    container_name: planner
+    ports:
+      - "786:786"
+    volumes:
+      # JSON db (channels, tasks, settings)
+      - ./data:/app/data
+      # Suno library downloads land here (../SunoMusic relative to /app)
+      - ./SunoMusic:/SunoMusic
+      # Generated/per-task audio served by the app
+      - ./public/audio:/app/public/audio
+    restart: unless-stopped

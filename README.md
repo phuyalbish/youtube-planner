@@ -19,7 +19,7 @@ npm install   # already done if scaffolded
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:786.
 
 Channels and tasks are stored in `data/db.json` (gitignored).
 
@@ -135,7 +135,7 @@ git clone <repo-url> ~/planner   # or unzip into ~/planner
 cd ~/planner
 npm install
 npm run dev
-Open http://localhost:3000.
+Open http://localhost:786.
 
 Optional alias so planner from anywhere starts it:
 
@@ -146,7 +146,7 @@ git clone <repo-url> ~/planner
 cd ~/planner
 npm install
 npm run dev
-Open http://localhost:3000.
+Open http://localhost:786.
 
 Optional alias (bash or zsh):
 
@@ -160,7 +160,7 @@ git clone <repo-url> $HOME\planner
 cd $HOME\planner
 npm install
 npm run dev
-Open http://localhost:3000.
+Open http://localhost:786.
 
 PowerShell function as an alias (works from any folder):
 
@@ -181,7 +181,7 @@ npm run start
 Same URL, faster, cleaner logs. Build once after pulling new changes.
 
 Common gotchas
-Port 3000 in use → PORT=3001 npm run dev (mac/Linux) or $env:PORT=3001; npm run dev (PowerShell).
+Port 786 in use → PORT=3001 npm run dev (mac/Linux) or $env:PORT=3001; npm run dev (PowerShell).
 Behind a firewall → only localhost is listening; nothing leaves your machine.
 Where data lives → ./data/db.json next to the project. Bulk-downloaded music goes to ../{folder} (one level above the project root). Adjust in src/app/api/suno/library/download/route.js if you'd rather keep it inside the project.
 Suno bearer token is per-machine, per-account — paste it in the sidebar on first run. It expires hourly; the banner above the textarea tells you when.

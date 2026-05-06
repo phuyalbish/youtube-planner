@@ -20,7 +20,7 @@ set -euo pipefail
 # where you call it from (and whether the alias uses an absolute path or not).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-PORT="${PLANNER_PORT:-3000}"
+PORT="${PLANNER_PORT:-786}"
 
 cyan()  { printf '\033[36m→\033[0m %s\n' "$1"; }
 green() { printf '\033[32m✓\033[0m %s\n' "$1"; }

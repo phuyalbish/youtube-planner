@@ -4,13 +4,13 @@
 //   request  { cursor?, filters }
 //   response { clips: [...], next_cursor, has_more }
 
-export const SUNO_BASE = "https://studio-api-prod.suno.com";
+const SUNO_BASE = "https://studio-api-prod.suno.com";
 export const SUNO_CDN = "https://cdn1.suno.ai";
-export const FEED_URL = `${SUNO_BASE}/api/feed/v3`;
+const FEED_URL = `${SUNO_BASE}/api/feed/v3`;
 export const CLIP_URL = (id) => `${SUNO_BASE}/api/clip/${id}`;
 export const DOWNLOAD_URL = (id) => `${SUNO_BASE}/api/download/clip/${id}`;
 
-export const BASE_FILTERS = {
+const BASE_FILTERS = {
   disliked: "False",
   trashed: "False",
   fromStudioProject: { presence: "False" },

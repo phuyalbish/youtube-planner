@@ -454,16 +454,16 @@ export function Dashboard() {
       {activeChannel && (
         <aside className="border-l border-[var(--border)] bg-white overflow-y-auto h-screen">
           <div className="px-4 py-4 flex flex-col gap-3">
+            <LibraryDownloadCard
+              channelName={activeChannel.name}
+              selectedDay={
+                tasks
+                  .filter((t) => !t.downloaded)
+                  .sort((a, b) => a.day - b.day)[0]?.day ?? null
+              }
+            />
             {view === "suno" ? (
               <>
-                <LibraryDownloadCard
-                  channelName={activeChannel.name}
-                  selectedDay={
-                    tasks
-                      .filter((t) => !t.downloaded)
-                      .sort((a, b) => a.day - b.day)[0]?.day ?? null
-                  }
-                />
                 <StylePresetCard
                   label="Suno Style"
                   hint="Auto-applied as the style/tags for every generation in this channel."
@@ -1012,21 +1012,22 @@ function NameModal({ open, title, placeholder, submitLabel, initialValue = "", o
 
 function LibraryDownloadCard({ channelName, selectedDay }) {
   const [filterOverride, setFilterOverride] = useState(null);
-  const [format, setFormat] = useState("wav");
-  const [folderOverride, setFolderOverride] = useState(null);
   const [limit, setLimit] = useState(10);
+  // phase: "idle" | "searching" | "downloading"
+  const [phase, setPhase] = useState("idle");
 
   // When the next pending day shifts (e.g. user just marked a task Downloaded),
   // discard any manual edits so the inputs snap back to the new defaults.
   useEffect(() => {
     setFilterOverride(null);
-    setFolderOverride(null);
     setResults(null);
+    setSelectedIds(new Set());
   }, [selectedDay, channelName]);
   const [busy, setBusy] = useState(false);
   const [line, setLine] = useState(null); // { left, right, tone }
   const [stats, setStats] = useState(null);
   const [results, setResults] = useState(null); // null | { clips, scanned, filter, limit }
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const abortRef = useRef(null);
   const toast = useToast();
 
@@ -1037,16 +1038,9 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
     }
   };
 
-  const sanitize = (s) =>
-    (s || "").replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "-").trim();
   const dayPart = selectedDay != null ? String(selectedDay) : "";
   const defaultFilter = `${(channelName || "").trim()}${dayPart}*`;
   const filter = filterOverride ?? defaultFilter;
-  const defaultFolder = (() => {
-    const ch = sanitize(channelName) || "channel";
-    return dayPart ? `${ch}_${dayPart}` : ch;
-  })();
-  const folder = folderOverride ?? defaultFolder;
 
   const fmtSize = (bytes) => {
     if (!bytes || bytes <= 0) return "";
@@ -1060,6 +1054,7 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setBusy(true);
+    setPhase("searching");
     setLine({ left: "Searching library…", right: "", tone: "info" });
     setStats(null);
     setResults(null);
@@ -1067,12 +1062,13 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
       const res = await fetch("/api/suno/library/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filter, limit }),
+        body: JSON.stringify(limit === "" ? { filter } : { filter, limit }),
         signal: ctrl.signal,
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setResults(body);
+      setSelectedIds(new Set((body.clips || []).map((c) => c.id)));
       setLine({
         left: `Found ${body.clips.length} match${body.clips.length === 1 ? "" : "es"}${body.filter ? ` for "${body.filter}"` : ""} · scanned ${body.scanned}`,
         right: "",
@@ -1091,6 +1087,7 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
     } finally {
       abortRef.current = null;
       setBusy(false);
+      setPhase("idle");
     }
   };
 
@@ -1099,14 +1096,19 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setBusy(true);
+    setPhase("downloading");
     setLine({ left: "Starting download…", right: "", tone: "info" });
     setStats(null);
-    const dir = (folder || "").trim() || defaultFolder || "suno-library";
     try {
       const res = await fetch("/api/suno/library/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format, filter, dir, limit }),
+        body: JSON.stringify({
+          format: "wav",
+          filter,
+          ids: Array.from(selectedIds),
+          ...(limit === "" ? {} : { limit }),
+        }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1116,7 +1118,6 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
       const reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
-      let total = 0;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -1136,7 +1137,6 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
               });
               break;
             case "library":
-              total = evt.count;
               setLine({
                 left: evt.filter
                   ? `${evt.count} match "${evt.filter}"${evt.limit ? ` (limit ${evt.limit})` : ""}`
@@ -1192,7 +1192,6 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
           }
         }
       }
-      void total;
     } catch (e) {
       if (e.name === "AbortError") {
         setLine({ left: "Download stopped", right: "", tone: "muted" });
@@ -1203,24 +1202,54 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
     } finally {
       abortRef.current = null;
       setBusy(false);
+      setPhase("idle");
     }
+  };
+
+  // Single button label + action
+  const selCount = selectedIds.size;
+  const btnLabel = (() => {
+    if (phase === "searching") return "Stop searching";
+    if (phase === "downloading") return "Stop downloading";
+    if (results?.clips?.length > 0)
+      return `Download ${selCount} track${selCount === 1 ? "" : "s"}`;
+    return "Search";
+  })();
+  const btnDisabled =
+    phase === "idle" && results?.clips?.length > 0 && selCount === 0;
+  const btnAction = () => {
+    if (phase === "searching" || phase === "downloading") { stop(); return; }
+    if (results?.clips?.length > 0) { download(); return; }
+    search();
+  };
+  const allSelected =
+    results?.clips?.length > 0 && selCount === results.clips.length;
+  const toggleAll = () => {
+    if (!results?.clips?.length) return;
+    setSelectedIds(allSelected ? new Set() : new Set(results.clips.map((c) => c.id)));
+  };
+  const toggleOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   return (
     <div className="rounded-xl border border-[var(--border)] bg-white p-4 flex flex-col gap-2 shadow-sm">
-      <div className="flex items-baseline justify-between">
-        <div className="text-[13px] font-semibold text-zinc-800">Download from Suno</div>
-        <div className="text-[11px] text-zinc-500">filter & save to folder</div>
-      </div>
+      <div className="text-[13px] font-semibold text-zinc-800">Download from Suno</div>
       <input
         type="text"
         placeholder={`${channelName || ""}* — append day, e.g. ${channelName || "Channel"}-5`}
         value={filter}
+        disabled={phase === "downloading"}
         onChange={(e) => {
           setFilterOverride(e.target.value);
           setResults(null);
         }}
-        className="border border-[var(--border-strong)] rounded px-2 py-1 text-xs"
+        className="border border-[var(--border-strong)] rounded px-2 py-1 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
       />
       <div className="flex items-stretch gap-2">
         <label className="flex items-center gap-1 text-[11px] text-zinc-500">
@@ -1230,70 +1259,79 @@ function LibraryDownloadCard({ channelName, selectedDay }) {
             min={1}
             max={500}
             value={limit}
+            placeholder="∞"
+            disabled={phase === "downloading"}
             onChange={(e) => {
-              setLimit(Math.max(1, Math.min(500, Number(e.target.value) || 1)));
+              const v = e.target.value;
+              if (v === "") setLimit("");
+              else setLimit(Math.max(1, Math.min(500, Number(v) || 1)));
               setResults(null);
             }}
-            className="w-14 border border-[var(--border-strong)] rounded px-2 py-1 text-xs"
+            className="w-14 border border-[var(--border-strong)] rounded px-2 py-1 text-xs disabled:opacity-50"
           />
         </label>
         <button
           type="button"
-          onClick={busy && !results ? stop : search}
-          disabled={busy && !!results}
-          className="flex-1 text-xs px-3 py-1 rounded-md bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 disabled:opacity-50"
+          onClick={btnAction}
+          disabled={btnDisabled}
+          className="flex-1 text-xs px-3 py-1.5 rounded-md bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {busy && !results ? "Stop" : "Search"}
+          {btnLabel}
         </button>
       </div>
       {results?.clips?.length > 0 && (
-        <>
-          <div className="max-h-48 overflow-auto rounded border border-[var(--border)] bg-zinc-50 px-2 py-1 text-[11px]">
-            {results.clips.map((c, i) => (
-              <div
-                key={c.id}
-                className="flex items-center gap-2 py-0.5 text-zinc-700"
-                title={c.title}
-              >
-                <span className="shrink-0 text-zinc-400 tabular-nums w-5 text-right">
-                  {i + 1}.
-                </span>
-                <span className="flex-1 truncate">{c.title}</span>
-                {c.duration ? (
-                  <span className="shrink-0 text-zinc-400 tabular-nums">
-                    {Math.round(c.duration)}s
-                  </span>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <input
-            type="text"
-            placeholder="suno-library"
-            value={folder}
-            onChange={(e) => setFolderOverride(e.target.value)}
-            className="border border-[var(--border-strong)] rounded px-2 py-1 text-xs font-mono"
-          />
-          <div className="flex items-stretch gap-2">
-            <select
-              value={format}
-              onChange={(e) => setFormat(e.target.value)}
-              className="border border-[var(--border-strong)] rounded pl-2 pr-6 py-1 text-xs"
-            >
-              <option value="wav">WAV</option>
-              <option value="mp3">MP3</option>
-            </select>
+        <div className="rounded border border-[var(--border)] bg-zinc-50 text-[11px]">
+          <div className="flex items-center gap-2 px-2 py-1 border-b border-[var(--border)] bg-zinc-100/60">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              disabled={phase === "downloading"}
+              className="accent-[var(--foreground)]"
+              aria-label="Select all"
+            />
             <button
               type="button"
-              onClick={busy ? stop : download}
-              className="flex-1 text-xs px-3 py-1 rounded-md bg-[var(--foreground)] text-[var(--background)] hover:opacity-90"
+              onClick={toggleAll}
+              disabled={phase === "downloading"}
+              className="text-[11px] text-zinc-600 hover:text-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {busy
-                ? "Stop"
-                : `Download ${results.clips.length} track${results.clips.length === 1 ? "" : "s"}`}
+              {allSelected ? "Unselect all" : "Select all"}
             </button>
+            <span className="ml-auto text-[11px] text-zinc-500 tabular-nums">
+              {selCount}/{results.clips.length}
+            </span>
           </div>
-        </>
+          <div className="max-h-48 overflow-auto px-2 py-1">
+            {results.clips.map((c, i) => {
+              const checked = selectedIds.has(c.id);
+              return (
+                <label
+                  key={c.id}
+                  className="flex items-center gap-2 py-0.5 text-zinc-700 cursor-pointer hover:bg-zinc-100 rounded px-1 -mx-1"
+                  title={c.title}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleOne(c.id)}
+                    disabled={phase === "downloading"}
+                    className="accent-[var(--foreground)]"
+                  />
+                  <span className="shrink-0 text-zinc-400 tabular-nums w-5 text-right">
+                    {i + 1}.
+                  </span>
+                  <span className="flex-1 truncate">{c.title}</span>
+                  {c.duration ? (
+                    <span className="shrink-0 text-zinc-400 tabular-nums">
+                      {Math.round(c.duration)}s
+                    </span>
+                  ) : null}
+                </label>
+              );
+            })}
+          </div>
+        </div>
       )}
       {line && (
         <div

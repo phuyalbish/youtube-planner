@@ -20,6 +20,7 @@ export default function SettingsPage() {
       </header>
       <main className="max-w-3xl mx-auto px-6 py-6 flex flex-col gap-6">
         <AppearanceSection />
+        <SunoSection />
         <SystemSection />
       </main>
     </div>
@@ -90,6 +91,52 @@ function ThemeChip({ active, onClick, children }) {
   );
 }
 
+
+/* ---------- Suno ---------- */
+
+function SunoSection() {
+  const [format, setFormat] = useState("wav");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((body) => {
+        const f = body.settings?.suno?.libraryDownloadFormat;
+        if (f === "mp3" || f === "wav") setFormat(f);
+      });
+  }, []);
+
+  const save = async (f) => {
+    setFormat(f);
+    await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ suno: { libraryDownloadFormat: f } }),
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  return (
+    <Section
+      title="Suno"
+      description="Settings for downloading music from your Suno library."
+    >
+      <Row label="Download format" hint="File format for library downloads.">
+        <div className="inline-flex bg-zinc-100 p-0.5 rounded-md w-fit">
+          <ThemeChip active={format === "wav"} onClick={() => format !== "wav" && save("wav")}>
+            WAV
+          </ThemeChip>
+          <ThemeChip active={format === "mp3"} onClick={() => format !== "mp3" && save("mp3")}>
+            MP3
+          </ThemeChip>
+        </div>
+        {saved && <span className="text-[11px] text-emerald-700 mt-1">Saved</span>}
+      </Row>
+    </Section>
+  );
+}
 
 /* ---------- System ---------- */
 

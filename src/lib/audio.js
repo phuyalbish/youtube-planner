@@ -88,45 +88,6 @@ export async function downloadAndConvert({ channelId, taskId, idx, audioUrl }) {
   }
 }
 
-export function extFromUrlOrCt(url, contentType) {
-  const ct = (contentType || "").toLowerCase();
-  if (ct.includes("wav")) return "wav";
-  if (ct.includes("flac")) return "flac";
-  if (ct.includes("mpeg") || ct.includes("mp3")) return "mp3";
-  if (ct.includes("ogg")) return "ogg";
-  try {
-    const u = new URL(url);
-    const last = u.pathname.toLowerCase().split(".").pop();
-    if (["wav", "mp3", "flac", "ogg", "m4a"].includes(last)) return last;
-  } catch {}
-  return "mp3";
-}
-
-// Fetches `url` and writes the response body verbatim — no ffmpeg, no
-// re-encoding. Returns { ext, bytes } where ext is sniffed from the
-// content-type header or the URL.
-export async function downloadDirect({ channelId, taskId, idx, url }) {
-  const res = await fetch(url, {
-    headers: { "User-Agent": "Mozilla/5.0 (planner audio fetch)" },
-  });
-  if (!res.ok) throw new Error(`Download failed (${res.status}) for ${url}`);
-  const ext = extFromUrlOrCt(url, res.headers.get("content-type"));
-  const dest = audioPathFor(channelId, taskId, idx, ext);
-  await ensureDir(dest);
-  const buf = Buffer.from(await res.arrayBuffer());
-  await fs.writeFile(dest, buf);
-  return { ext, bytes: buf.length };
-}
-
-// Saves an in-memory buffer (e.g. an uploaded file) without re-encoding.
-export async function saveBuffer({ channelId, taskId, idx, buffer, filename, contentType }) {
-  const ext = extFromUrlOrCt(filename || "", contentType);
-  const dest = audioPathFor(channelId, taskId, idx, ext);
-  await ensureDir(dest);
-  await fs.writeFile(dest, buffer);
-  return { ext, bytes: buffer.length };
-}
-
 export async function removeTaskAudio(channelId, taskId) {
   const dir = path.join(AUDIO_DIR, channelId);
   const entries = await fs.readdir(dir).catch(() => []);

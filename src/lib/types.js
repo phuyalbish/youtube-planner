@@ -20,6 +20,7 @@ export function defaultSettings() {
     suno: {
       libraryToken: "",
       libraryDownloadDir: "suno-library",
+      libraryDownloadFormat: "wav",
     },
   };
 }

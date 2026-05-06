@@ -1,0 +1,21 @@
+# Force LF line endings for files that get executed inside Linux containers.
+# Without this, Windows clones get CRLF and Alpine's /bin/sh chokes on scripts.
+* text=auto eol=lf
+
+Dockerfile         text eol=lf
+*.sh               text eol=lf
+*.mjs              text eol=lf
+*.js               text eol=lf
+*.json             text eol=lf
+*.yml              text eol=lf
+*.yaml             text eol=lf
+
+# Binary files — leave alone.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.wav  binary
+*.mp3  binary
+*.flac binary

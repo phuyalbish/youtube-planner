@@ -5,6 +5,8 @@ services:
     container_name: planner
     ports:
       - "786:786"
+    # Volumes use forward-slash paths; Docker Desktop on Windows translates
+    # them automatically (D:\planner\data → ./data here).
     volumes:
       # JSON db (channels, tasks, settings)
       - ./data:/app/data

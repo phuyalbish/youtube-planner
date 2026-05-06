@@ -3,8 +3,17 @@
 # ---- deps ----
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+# Copy package.json always; lockfile only if present (avoids COPY failure on
+# Windows checkouts that didn't include it). Try `npm ci` first for
+# reproducibility, fall back to `npm install` when the lockfile drifts —
+# common when devs on different OSes share a repo.
+COPY package.json ./
+COPY package-lock.json* ./
+RUN if [ -f package-lock.json ]; then \
+      npm ci --legacy-peer-deps || npm install --legacy-peer-deps; \
+    else \
+      npm install --legacy-peer-deps; \
+    fi
 
 # ---- build ----
 FROM node:20-alpine AS build

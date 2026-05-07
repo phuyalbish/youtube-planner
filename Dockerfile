@@ -20,7 +20,11 @@ FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
+# NEXT_TELEMETRY_DISABLED: skip Next.js telemetry.
+# NODE_OPTIONS=--openssl-legacy-provider: needed only when building older
+# Next/webpack-4 codebases on Node 17+. Harmless on Next 16+ builds.
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NODE_OPTIONS=--openssl-legacy-provider
 RUN npm run build
 
 # ---- runtime ----
